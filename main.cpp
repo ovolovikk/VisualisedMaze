@@ -6,10 +6,6 @@
 #define WINDOW_HEIGHT 960
 #define GRID_WIDTH 25
 #define GRID_HEIGHT 25
-#define CELL_RADIUS 10.f
-#define CELL_POINT_COUNT 100
-#define GRID_PIXEL_WIDTH GRID_WIDTH * (CELL_RADIUS * 3)
-#define GRID_PIXEL_HEIGHT GRID_HEIGHT * (CELL_RADIUS * 3)
 
 enum class CellType
 {
@@ -32,47 +28,84 @@ struct Cell
 int main() {
     sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "SFML MazeVisualizer");
     std::vector<std::vector<Cell>> cells;
-    cells.resize(GRID_WIDTH, std::vector<Cell>(GRID_HEIGHT));
-    sf::CircleShape cellShape(CELL_RADIUS, CELL_POINT_COUNT);
-    cellShape.setFillColor(sf::Color::Black);
+    
+    float cell_width = static_cast<float>(WINDOW_WIDTH) / GRID_WIDTH;
+    float cell_height = static_cast<float>(WINDOW_HEIGHT) / GRID_HEIGHT;
+    float cell_size = std::min(cell_width, cell_height);
 
-    float offsetX = (window.getSize().x - GRID_PIXEL_WIDTH) / 2.0f;
-    float offsetY = (window.getSize().y - GRID_PIXEL_HEIGHT) / 2.0f;
+    const float grid_pixel_width = GRID_WIDTH * cell_size;
+    const float grid_pixel_height = GRID_HEIGHT * cell_size;
+    
+    cells.resize(GRID_WIDTH, std::vector<Cell>(GRID_HEIGHT));
+    sf::RectangleShape cell_shape(sf::Vector2f(cell_size - 1, cell_size - 1));
+    cell_shape.setFillColor(sf::Color::Black);
+
+    float offsetX = (window.getSize().x - grid_pixel_width) / 2.0f;
+    float offsetY = (window.getSize().y - grid_pixel_height) / 2.0f;
 
     while (window.isOpen()) {
         sf::Event event;
-        while (window.pollEvent(event)) {
+        while (window.pollEvent(event))
+        {
             if (event.type == sf::Event::Closed)
                 window.close();
+            if (event.type == sf::Event::MouseButtonReleased)
+            {
+                if (event.mouseButton.button == sf::Mouse::Left)
+                {
+                    sf::Vector2i mouse_pos = sf::Mouse::getPosition(window);
+                    
+                    int gridX = static_cast<int>((mouse_pos.x - offsetX) / cell_size);
+                    int gridY = static_cast<int>((mouse_pos.y - offsetY) / cell_size);
+
+                    if (gridX >= 0 && gridX < GRID_WIDTH && gridY >= 0 && gridY < GRID_HEIGHT)
+                    {
+                        Cell& cell = cells.at(gridX).at(gridY);
+                        if (cell.type == CellType::Empty)
+                        {
+                            cell.type = CellType::Wall;
+                        }
+                        else if (cell.type == CellType::Wall)
+                        {
+                            cell.type = CellType::Empty;
+                        }
+                    }
+                }
+            }
+                
         }
 
         window.clear(sf::Color::Cyan);
-        for(int i = 0;i < GRID_WIDTH;++i)
-        {
-            for(int j = 0; j < GRID_HEIGHT;++j)
-            {
-                CellType curr_cell_type = cells.at(i).at(j).type;
-                cells.at(i).at(j).x = i;
-                cells.at(i).at(j).y = j;
-                cellShape.setPosition(i * (CELL_RADIUS * 3) + offsetX, j * (CELL_RADIUS * 3) + offsetY);
-                switch (curr_cell_type)
+        for(int i = 0;i < GRID_WIDTH;++i) {
+            for(int j = 0; j < GRID_HEIGHT;++j) {
+                Cell& current_cell = cells.at(i).at(j);
+                current_cell.x = i;
+                current_cell.y = j;
+                cell_shape.setPosition(i * cell_size + offsetX, j * cell_size + offsetY);
+                switch (current_cell.type)
                 {
                     case CellType::Empty:
-                        cellShape.setFillColor(sf::Color::Black);
+                        cell_shape.setFillColor(sf::Color::Black);
+                        break;
                     case CellType::Wall:
-                        cellShape.setFillColor(sf::Color::White);
+                        cell_shape.setFillColor(sf::Color::White);
+                        break;
                     case CellType::Start:
-                        cellShape.setFillColor(sf::Color::Red);
+                        cell_shape.setFillColor(sf::Color::Red);
+                        break;
                     case CellType::End:
-                        cellShape.setFillColor(sf::Color::Green);
+                        cell_shape.setFillColor(sf::Color::Green);
+                        break;
                     case CellType::Visited:
-                        cellShape.setFillColor(sf::Color::Yellow);
+                        cell_shape.setFillColor(sf::Color::Yellow);
+                        break;
                     case CellType::Path:
-                        cellShape.setFillColor(sf::Color::Magenta);
+                        cell_shape.setFillColor(sf::Color::Magenta);
+                        break;
                     default:
-                        cellShape.setFillColor(sf::Color::Black);
+                        cell_shape.setFillColor(sf::Color::Black);
                 }
-                window.draw(cellShape);
+                window.draw(cell_shape);
             }
         }
         window.display();
