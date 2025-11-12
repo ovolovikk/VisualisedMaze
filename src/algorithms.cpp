@@ -1,11 +1,13 @@
 #include "algorithms.hpp"
+
 #include <iostream>
 #include <stack>
 #include <random>
 #include <vector>
 #include <algorithm>
 
-void removeWalls(Cell& a, Cell& b) {
+void removeWalls(Cell& a, Cell& b)
+{
     int x = a.x - b.x;
     if (x == -1) {
         a.walls[1] = false;
@@ -27,8 +29,10 @@ void removeWalls(Cell& a, Cell& b) {
     }
 }
 
-void dfs(std::vector<std::vector<Cell>>& cells) {
-    for(auto& row : cells) for(auto& cell : row) {
+void dfs(std::vector<std::vector<Cell>>& cells, Cell* start_cell)
+{
+    for(auto& row : cells) for(auto& cell : row)
+    {
         cell.visited = false;
         for(int i=0; i<4; ++i) cell.walls[i] = true;
     }
@@ -37,11 +41,16 @@ void dfs(std::vector<std::vector<Cell>>& cells) {
     std::random_device rd;
     std::mt19937 g(rd());
 
-    Cell* start_cell = &cells[0][0];
+    if(start_cell == nullptr)
+    {
+        start_cell = &cells[0][0];
+    }
+
     start_cell->visited = true;
     stack.push(start_cell);
 
-    while(!stack.empty()) {
+    while(!stack.empty())
+    {
         Cell* current = stack.top();
         stack.pop();
 

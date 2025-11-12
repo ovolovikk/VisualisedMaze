@@ -10,7 +10,8 @@
 int main() {
     sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "SFML MazeVisualizer");
     std::vector<std::vector<Cell>> cells;
-    
+    Cell* start_cell_ptr = nullptr; // Use a pointer to track the start cell
+
     float cell_width = static_cast<float>(WINDOW_WIDTH) / GRID_WIDTH;
     float cell_height = static_cast<float>(WINDOW_HEIGHT) / GRID_HEIGHT;
     float cell_size = std::min(cell_width, cell_height);
@@ -48,7 +49,7 @@ int main() {
 
                 if(event.key.code == sf::Keyboard::G)
                 {
-                    dfs(cells);
+                    dfs(cells, start_cell_ptr);
                 }
 
                 if(event.key.code == sf::Keyboard::S)
@@ -58,11 +59,17 @@ int main() {
                         Cell& cell = cells.at(gridX).at(gridY);
                         if (cell.type != CellType::Start)
                         {
+                            // If there was a previous start cell, reset it
+                            if (start_cell_ptr) {
+                                start_cell_ptr->type = CellType::Empty;
+                            }
                             cell.type = CellType::Start;
+                            start_cell_ptr = &cell; // Store a pointer to the new start cell
                         }
                         else if (cell.type == CellType::Start)
                         {
                             cell.type = CellType::Empty;
+                            start_cell_ptr = nullptr; // No start cell anymore
                         }
                     }
                 }
