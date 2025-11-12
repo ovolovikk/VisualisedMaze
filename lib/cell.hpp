@@ -1,0 +1,26 @@
+#ifndef CELL_HPP
+#define CELL_HPP
+
+#include <vector>
+
+#define GRID_WIDTH 25
+#define GRID_HEIGHT 25
+
+enum class CellType
+{
+    Empty, Start, End, Visited, Path
+};
+
+struct Cell
+{
+    CellType type = CellType::Empty;
+    int x, y;
+    // top, right, bottom, left
+    bool walls[4] = {true, true, true, true};
+
+    bool visited = false;
+    Cell* parent = nullptr;
+    std::vector<Cell*> neighbours;
+};
+
+#endif // CELL_HPP
