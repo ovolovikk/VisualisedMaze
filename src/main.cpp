@@ -9,6 +9,74 @@
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 960
 
+void draw_grid(sf::RenderWindow& window, std::vector<std::vector<Cell>>& cells, float cell_size, float offsetX, float offsetY)
+{
+    sf::RectangleShape cell_shape(sf::Vector2f(cell_size, cell_size));
+    sf::RectangleShape wall_shape;
+    wall_shape.setFillColor(sf::Color::White);
+
+    for(int i = 0; i < GRID_WIDTH; ++i) {
+        for(int j = 0; j < GRID_HEIGHT; ++j) {
+            Cell& current_cell = cells.at(i).at(j);
+            
+            cell_shape.setPosition(i * cell_size + offsetX, j * cell_size + offsetY);
+            cell_shape.setSize({cell_size, cell_size});
+            cell_shape.setOutlineThickness(0);
+
+            switch (current_cell.type)
+            {
+                case CellType::Empty:
+                    cell_shape.setFillColor(sf::Color::Black);
+                    break;
+                case CellType::Start:
+                    cell_shape.setFillColor(sf::Color::Green);
+                    break;
+                case CellType::End:
+                    cell_shape.setFillColor(sf::Color::Red);
+                    break;
+                case CellType::Visited:
+                    cell_shape.setFillColor(sf::Color::Black);
+                    break;
+                case CellType::Path:
+                    cell_shape.setFillColor(sf::Color::Magenta);
+                    break;
+                case CellType::Frontier:
+                    cell_shape.setFillColor(sf::Color(0, 0, 128));
+                    break;
+                default:
+                    cell_shape.setFillColor(sf::Color::Black);
+            }
+            window.draw(cell_shape);
+
+            // walls
+            float wall_thickness = 1.0f;
+            float px = i * cell_size + offsetX;
+            float py = j * cell_size + offsetY;
+
+            if (current_cell.walls[0]) { // top
+                wall_shape.setSize({cell_size, wall_thickness});
+                wall_shape.setPosition(px, py);
+                window.draw(wall_shape);
+            }
+            if (current_cell.walls[1]) { // right
+                wall_shape.setSize({wall_thickness, cell_size});
+                wall_shape.setPosition(px + cell_size - wall_thickness, py);
+                window.draw(wall_shape);
+            }
+            if (current_cell.walls[2]) { // bottom
+                wall_shape.setSize({cell_size, wall_thickness});
+                wall_shape.setPosition(px, py + cell_size - wall_thickness);
+                window.draw(wall_shape);
+            }
+            if (current_cell.walls[3]) { // left
+                wall_shape.setSize({wall_thickness, cell_size});
+                wall_shape.setPosition(px, py);
+                window.draw(wall_shape);
+            }
+        }
+    }
+}
+
 int main() {
     sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "SFML MazeVisualizer");
     std::vector<std::vector<Cell>> cells;
@@ -34,10 +102,6 @@ int main() {
         }
     }
     
-    sf::RectangleShape cell_shape(sf::Vector2f(cell_size, cell_size));
-    sf::RectangleShape wall_shape;
-    wall_shape.setFillColor(sf::Color::White);
-
     float offsetX = (window.getSize().x - grid_pixel_width) / 2.0f;
     float offsetY = (window.getSize().y - grid_pixel_height) / 2.0f;
 
@@ -134,66 +198,7 @@ int main() {
         }
 
         window.clear(sf::Color::Cyan);
-        for(int i = 0;i < GRID_WIDTH;++i) {
-            for(int j = 0; j < GRID_HEIGHT;++j) {
-                Cell& current_cell = cells.at(i).at(j);
-                
-                cell_shape.setPosition(i * cell_size + offsetX, j * cell_size + offsetY);
-                cell_shape.setSize({cell_size, cell_size});
-                cell_shape.setOutlineThickness(0);
-
-                switch (current_cell.type)
-                {
-                    case CellType::Empty:
-                        cell_shape.setFillColor(sf::Color::Black);
-                        break;
-                    case CellType::Start:
-                        cell_shape.setFillColor(sf::Color::Green);
-                        break;
-                    case CellType::End:
-                        cell_shape.setFillColor(sf::Color::Red);
-                        break;
-                    case CellType::Visited:
-                        cell_shape.setFillColor(sf::Color::Black);
-                        break;
-                    case CellType::Path:
-                        cell_shape.setFillColor(sf::Color::Magenta);
-                        break;
-                    case CellType::Frontier:
-                        cell_shape.setFillColor(sf::Color(0, 0, 128));
-                        break;
-                    default:
-                        cell_shape.setFillColor(sf::Color::Black);
-                }
-                window.draw(cell_shape);
-
-                // walls
-                float wall_thickness = 1.0f;
-                float px = i * cell_size + offsetX;
-                float py = j * cell_size + offsetY;
-
-                if (current_cell.walls[0]) { // top
-                    wall_shape.setSize({cell_size, wall_thickness});
-                    wall_shape.setPosition(px, py);
-                    window.draw(wall_shape);
-                }
-                if (current_cell.walls[1]) { // right
-                    wall_shape.setSize({wall_thickness, cell_size});
-                    wall_shape.setPosition(px + cell_size - wall_thickness, py);
-                    window.draw(wall_shape);
-                }
-                if (current_cell.walls[2]) { // bottom
-                    wall_shape.setSize({cell_size, wall_thickness});
-                    wall_shape.setPosition(px, py + cell_size - wall_thickness);
-                    window.draw(wall_shape);
-                }
-                if (current_cell.walls[3]) { // left
-                    wall_shape.setSize({wall_thickness, cell_size});
-                    wall_shape.setPosition(px, py);
-                    window.draw(wall_shape);
-                }
-            }
-        }
+        draw_grid(window, cells, cell_size, offsetX, offsetY);
         window.display();
         sf::sleep(sf::milliseconds(17));
     }

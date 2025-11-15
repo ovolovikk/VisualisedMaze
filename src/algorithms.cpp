@@ -12,6 +12,52 @@
 static std::random_device rd;
 static std::mt19937 g(rd());
 
+static std::vector<Cell*> get_neighbours(Cell* current, std::vector<std::vector<Cell>>& cells, bool get_visited)
+{
+    std::vector<Cell*> neighbours;
+    int cx = current->x;
+    int cy = current->y;
+
+    if (cy > 0 && cells[cx][cy-1].visited == get_visited) {
+        neighbours.push_back(&cells[cx][cy-1]);
+    }
+
+    if (cx < GRID_WIDTH - 1 && cells[cx+1][cy].visited == get_visited) {
+        neighbours.push_back(&cells[cx+1][cy]);
+    }
+
+    if (cy < GRID_HEIGHT - 1 && cells[cx][cy+1].visited == get_visited) {
+        neighbours.push_back(&cells[cx][cy+1]);
+    }
+    
+    if (cx > 0 && cells[cx-1][cy].visited == get_visited) {
+        neighbours.push_back(&cells[cx-1][cy]);
+    }
+    return neighbours;
+}
+
+static void add_neighbours_to_frontier(Cell* cell, std::vector<std::vector<Cell>>& cells, std::vector<Cell*>& frontier)
+{
+    int cx = cell->x;
+    int cy = cell->y;
+
+    auto add_if_valid = [&](int x, int y) {
+        if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT && !cells[x][y].visited) {
+            bool in_frontier = false;
+            for(Cell* f_cell : frontier) if(f_cell == &cells[x][y]) in_frontier = true;
+            if(!in_frontier) {
+                cells[x][y].type = CellType::Frontier;
+                frontier.push_back(&cells[x][y]);
+            }
+        }
+    };
+
+    add_if_valid(cx, cy - 1);
+    add_if_valid(cx + 1, cy);
+    add_if_valid(cx, cy + 1);
+    add_if_valid(cx - 1, cy);
+}
+
 void removeWalls(Cell& a, Cell& b)
 {
     int x = a.x - b.x;
@@ -66,14 +112,7 @@ void dfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atom
     {
         Cell* current = stack.top();
 
-        std::vector<Cell*> unvisited_neighbours;
-        int cx = current->x;
-        int cy = current->y;
-
-        if (cy > 0 && !cells[cx][cy-1].visited) unvisited_neighbours.push_back(&cells[cx][cy-1]);
-        if (cx < GRID_WIDTH-1 && !cells[cx+1][cy].visited) unvisited_neighbours.push_back(&cells[cx+1][cy]);
-        if (cy < GRID_HEIGHT-1 && !cells[cx][cy+1].visited) unvisited_neighbours.push_back(&cells[cx][cy+1]);
-        if (cx > 0 && !cells[cx-1][cy].visited) unvisited_neighbours.push_back(&cells[cx-1][cy]);
+        std::vector<Cell*> unvisited_neighbours = get_neighbours(current, cells, false);
         
         if(!unvisited_neighbours.empty())
         {
@@ -111,16 +150,7 @@ void bfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atom
     start_cell->visited = true;
     start_cell->type = CellType::Visited;
     
-    int sx = start_cell->x;
-    int sy = start_cell->y;
-    if (sy > 0) frontier.push_back(&cells[sx][sy-1]);
-    if (sx < GRID_WIDTH-1) frontier.push_back(&cells[sx+1][sy]);
-    if (sy < GRID_HEIGHT-1) frontier.push_back(&cells[sx][sy+1]);
-    if (sx > 0) frontier.push_back(&cells[sx-1][sy]);
-
-    for(Cell* cell : frontier) {
-        cell->type = CellType::Frontier;
-    }
+    add_neighbours_to_frontier(start_cell, cells, frontier);
 
     while(!frontier.empty() && is_running)
     {
@@ -131,13 +161,7 @@ void bfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atom
         current->type = CellType::Path;
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
-        std::vector<Cell*> visited_neighbours;
-        int cx = current->x;
-        int cy = current->y;
-        if (cy > 0 && cells[cx][cy-1].visited) visited_neighbours.push_back(&cells[cx][cy-1]);
-        if (cx < GRID_WIDTH-1 && cells[cx+1][cy].visited) visited_neighbours.push_back(&cells[cx+1][cy]);
-        if (cy < GRID_HEIGHT-1 && cells[cx][cy+1].visited) visited_neighbours.push_back(&cells[cx][cy+1]);
-        if (cx > 0 && cells[cx-1][cy].visited) visited_neighbours.push_back(&cells[cx-1][cy]);
+        std::vector<Cell*> visited_neighbours = get_neighbours(current, cells, true);
 
         if (!visited_neighbours.empty()) {
             Cell* chosen_neighbour = visited_neighbours[g() % visited_neighbours.size()];
@@ -147,21 +171,7 @@ void bfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atom
         current->visited = true;
         current->type = CellType::Visited;
 
-        auto add_to_frontier = [&](int x, int y) {
-            if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT && !cells[x][y].visited) {
-                bool in_frontier = false;
-                for(Cell* f_cell : frontier) if(f_cell == &cells[x][y]) in_frontier = true;
-                if(!in_frontier) {
-                    cells[x][y].type = CellType::Frontier;
-                    frontier.push_back(&cells[x][y]);
-                }
-            }
-        };
-
-        add_to_frontier(cx, cy - 1);
-        add_to_frontier(cx + 1, cy);
-        add_to_frontier(cx, cy + 1);
-        add_to_frontier(cx - 1, cy);
+        add_neighbours_to_frontier(current, cells, frontier);
     }
 
     for(auto& row : cells) for(auto& cell : row) {
