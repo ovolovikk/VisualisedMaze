@@ -22,6 +22,9 @@ SOURCES = $(wildcard $(SRCDIR)/*.cpp)
 # Create a list of object files in the object directory
 OBJECTS = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SOURCES))
 
+# --- New: Find all .hpp files ---
+HEADERS = $(wildcard lib/*.hpp)
+
 # Default target
 all: $(TARGET)
 
@@ -30,7 +33,8 @@ $(TARGET): $(OBJECTS)
 	$(CXX) $^ -o $@ $(LDFLAGS)
 
 # Rule to compile .cpp files into .o files in the OBJDIR
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+# Now depends on header files, so it recompiles if a header changes.
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(HEADERS)
 	@mkdir -p $(OBJDIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
