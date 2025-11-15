@@ -4,7 +4,9 @@
 #include <thread>
 #include <atomic>
 
-#include "algorithms.hpp"
+#include "maze_creators.hpp"
+#include "maze_solvers.hpp"
+#include "maze_utils.hpp"
 
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 960
@@ -128,7 +130,7 @@ int main() {
                         is_algorithm_running = true;
                         needs_cleanup = true;
                         if (algorithm_thread.joinable()) algorithm_thread.join();
-                        algorithm_thread = std::thread(dfs_maze, std::ref(cells), start_cell_ptr, end_cell_ptr, &is_algorithm_running);
+                        algorithm_thread = std::thread(create_dfs_maze, std::ref(cells), start_cell_ptr, end_cell_ptr, &is_algorithm_running);
                     }
                 }
 
@@ -138,7 +140,7 @@ int main() {
                         is_algorithm_running = true;
                         needs_cleanup = true;
                         if (algorithm_thread.joinable()) algorithm_thread.join();
-                        algorithm_thread = std::thread(bfs_maze, std::ref(cells), start_cell_ptr, end_cell_ptr, &is_algorithm_running);
+                        algorithm_thread = std::thread(create_bfs_maze, std::ref(cells), start_cell_ptr, end_cell_ptr, &is_algorithm_running);
                     }
                 }
 
@@ -172,7 +174,7 @@ int main() {
 
                         auto solve_task = [&]() {
                             if (!is_maze_generated(cells)) {
-                                bfs_maze(cells, start_cell_ptr, end_cell_ptr, nullptr);
+                                create_bfs_maze(cells, start_cell_ptr, end_cell_ptr, nullptr);
                             }
                             dijkstra_solve(cells, start_cell_ptr, end_cell_ptr, &is_algorithm_running);
                         };
