@@ -12,6 +12,19 @@
 static std::random_device rd;
 static std::mt19937 g(rd());
 
+bool is_maze_generated(const std::vector<std::vector<Cell>>& cells)
+{
+    for(const auto& row : cells) {
+        for(const auto& cell : row) {
+            // If a cell doesn't have all 4 walls, a maze has been started.
+            if (!cell.walls[0] || !cell.walls[1] || !cell.walls[2] || !cell.walls[3]) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 static std::vector<Cell*> get_neighbours(Cell* current, std::vector<std::vector<Cell>>& cells, bool get_visited)
 {
     std::vector<Cell*> neighbours;
@@ -31,6 +44,31 @@ static std::vector<Cell*> get_neighbours(Cell* current, std::vector<std::vector<
     }
     
     if (cx > 0 && cells[cx-1][cy].visited == get_visited) {
+        neighbours.push_back(&cells[cx-1][cy]);
+    }
+    return neighbours;
+}
+
+static std::vector<Cell*> get_neighbours(Cell* current, std::vector<std::vector<Cell>>& cells)
+{
+    std::vector<Cell*> neighbours;
+    int cx = current->x;
+    int cy = current->y;
+
+    // top
+    if (!current->walls[0] && !cells[cx][cy-1].visited) {
+        neighbours.push_back(&cells[cx][cy-1]);
+    }
+    // right
+    if (!current->walls[1] && !cells[cx+1][cy].visited) {
+        neighbours.push_back(&cells[cx+1][cy]);
+    }
+    // bottom
+    if (!current->walls[2] && !cells[cx][cy+1].visited) {
+        neighbours.push_back(&cells[cx][cy+1]);
+    }
+    // left
+    if (!current->walls[3] && !cells[cx-1][cy].visited) {
         neighbours.push_back(&cells[cx-1][cy]);
     }
     return neighbours;
@@ -87,13 +125,12 @@ void cells_reset(std::vector<std::vector<Cell>>& cells)
     {
         cell.visited = false;
         for(int i=0; i<4; ++i) cell.walls[i] = true;
-        if (cell.type == CellType::Path || cell.type == CellType::Visited) {
-            cell.type = CellType::Empty;
-        }
+        cell.type = CellType::Empty;
+        cell.parent = nullptr;
     }
 }
 
-void dfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atomic<bool>& is_running)
+void dfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, Cell* end_cell, std::atomic<bool>* is_running)
 {
     cells_reset(cells);
 
@@ -103,13 +140,23 @@ void dfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atom
     {
         start_cell = &cells[0][0];
     }
+    else
+    {
+        start_cell->type = CellType::Start;
+    }
+    if (end_cell)
+    {
+        end_cell->type = CellType::End;
+    }
 
     start_cell->visited = true;
-    start_cell->type = CellType::Path;
+    if(is_running) start_cell->type = CellType::Path;
     stack.push(start_cell);
 
-    while(!stack.empty() && is_running)
+    while(!stack.empty())
     {
+        if (is_running && !is_running->load()) break;
+
         Cell* current = stack.top();
 
         std::vector<Cell*> unvisited_neighbours = get_neighbours(current, cells, false);
@@ -122,21 +169,23 @@ void dfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atom
             removeWalls(*current, *chosen);
 
             chosen->visited = true;
-            chosen->type = CellType::Path;
+            if(is_running) {
+                chosen->type = CellType::Path;
+                std::this_thread::sleep_for(std::chrono::milliseconds(15));
+            }
             stack.push(chosen);
-            std::this_thread::sleep_for(std::chrono::milliseconds(15));
         }
         else
         {
-            current->type = CellType::Visited;
+            if(is_running) current->type = CellType::Visited;
             stack.pop();
         }
     }
 
-    is_running = false;
+    if(is_running) *is_running = false;
 }
 
-void bfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atomic<bool>& is_running)
+void bfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, Cell* end_cell, std::atomic<bool>* is_running)
 {
     cells_reset(cells);
 
@@ -146,19 +195,29 @@ void bfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atom
     {
         start_cell = &cells[0][0];
     }
+    else
+    {
+        start_cell->type = CellType::Start;
+    }
+    if (end_cell)
+    {
+        end_cell->type = CellType::End;
+    }
     
     start_cell->visited = true;
-    start_cell->type = CellType::Visited;
+    if(is_running) start_cell->type = CellType::Visited;
     
     add_neighbours_to_frontier(start_cell, cells, frontier);
 
-    while(!frontier.empty() && is_running)
+    while(!frontier.empty())
     {
+        if (is_running && !is_running->load()) break;
+
         int rand_index = g() % frontier.size();
         Cell* current = frontier[rand_index];
         frontier.erase(frontier.begin() + rand_index);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        if(is_running) std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
         std::vector<Cell*> visited_neighbours = get_neighbours(current, cells, true);
 
@@ -168,16 +227,101 @@ void bfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atom
         }
 
         current->visited = true;
-        current->type = CellType::Visited;
+        if(is_running) current->type = CellType::Visited;
 
         add_neighbours_to_frontier(current, cells, frontier);
     }
 
-    for(auto& row : cells) for(auto& cell : row) {
-        if (cell.type == CellType::Path || cell.type == CellType::Frontier) {
-            cell.type = CellType::Empty;
+    if(is_running) {
+        for(auto& row : cells) for(auto& cell : row) {
+            if (cell.type == CellType::Path || cell.type == CellType::Frontier) {
+                cell.type = CellType::Empty;
+            }
         }
     }
 
-    is_running = false;
+    if(is_running) *is_running = false;
+}
+
+void dijkstra_solve(std::vector<std::vector<Cell>>& cells, Cell* start_cell, Cell* end_cell, std::atomic<bool>* is_running)
+{
+    if (!start_cell || !end_cell) {
+        if (is_running) *is_running = false;
+        return;
+    }
+
+    for(auto& row : cells) for(auto& cell : row) {
+        cell.visited = false;
+        cell.parent = nullptr;
+        if (cell.type == CellType::Path || cell.type == CellType::Visited || cell.type == CellType::Frontier) {
+            if (cell.type != CellType::Start && cell.type != CellType::End)
+                cell.type = CellType::Empty;
+        }
+    }
+
+    std::vector<Cell*> unvisited;
+    std::vector<std::vector<int>> distance(GRID_WIDTH, std::vector<int>(GRID_HEIGHT, INT_MAX));
+
+    distance[start_cell->x][start_cell->y] = 0;
+    unvisited.push_back(start_cell);
+
+    Cell* current = nullptr;
+    while(!unvisited.empty()) {
+        if (is_running && !is_running->load()) break;
+
+        std::sort(unvisited.begin(), unvisited.end(), [&](Cell* a, Cell* b) {
+            return distance[a->x][a->y] > distance[b->x][b->y];
+        });
+        current = unvisited.back();
+        unvisited.pop_back();
+
+        if (current->type != CellType::Start && current->type != CellType::End) {
+            current->type = CellType::Path;
+        }
+        if (is_running) std::this_thread::sleep_for(std::chrono::milliseconds(5));
+
+        if (current == end_cell) break;
+
+        if (current->type != CellType::Start && current->type != CellType::End) {
+            current->type = CellType::Visited;
+        }
+        current->visited = true;
+
+        std::vector<Cell*> traversable_neighbours = get_neighbours(current, cells);
+
+        for (Cell* neighbour : traversable_neighbours) {
+            int new_dist = distance[current->x][current->y] + 1;
+            if (new_dist < distance[neighbour->x][neighbour->y]) {
+                distance[neighbour->x][neighbour->y] = new_dist;
+                neighbour->parent = current;
+                
+                bool in_unvisited = false;
+                for(Cell* u_cell : unvisited) if(u_cell == neighbour) in_unvisited = true;
+                if(!in_unvisited) {
+                    unvisited.push_back(neighbour);
+                    if(neighbour->type != CellType::End) neighbour->type = CellType::Frontier;
+                }
+            }
+        }
+    }
+
+    for(auto& row : cells) for(auto& cell : row) {
+        if (cell.type == CellType::Visited || cell.type == CellType::Frontier) {
+            if (cell.type != CellType::Start && cell.type != CellType::End) {
+                cell.type = CellType::Empty;
+            }
+        }
+    }
+
+    if (current == end_cell) {
+        while(current->parent != nullptr) {
+            current = current->parent;
+            if (current->type != CellType::Start) {
+                current->type = CellType::Path;
+                if (is_running) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }
+    }
+
+    if (is_running) *is_running = false;
 }

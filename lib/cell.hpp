@@ -3,8 +3,8 @@
 
 #include <vector>
 
-#define GRID_WIDTH 50
-#define GRID_HEIGHT 50
+#define GRID_WIDTH 25
+#define GRID_HEIGHT 25
 
 enum class CellType
 {

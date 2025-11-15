@@ -35,7 +35,7 @@ void draw_grid(sf::RenderWindow& window, std::vector<std::vector<Cell>>& cells, 
                     cell_shape.setFillColor(sf::Color::Red);
                     break;
                 case CellType::Visited:
-                    cell_shape.setFillColor(sf::Color::Black);
+                    cell_shape.setFillColor(sf::Color(0, 100, 100));
                     break;
                 case CellType::Path:
                     cell_shape.setFillColor(sf::Color(128, 0, 0));
@@ -128,7 +128,7 @@ int main() {
                         is_algorithm_running = true;
                         needs_cleanup = true;
                         if (algorithm_thread.joinable()) algorithm_thread.join();
-                        algorithm_thread = std::thread(dfs_maze, std::ref(cells), start_cell_ptr, std::ref(is_algorithm_running));
+                        algorithm_thread = std::thread(dfs_maze, std::ref(cells), start_cell_ptr, end_cell_ptr, &is_algorithm_running);
                     }
                 }
 
@@ -138,7 +138,46 @@ int main() {
                         is_algorithm_running = true;
                         needs_cleanup = true;
                         if (algorithm_thread.joinable()) algorithm_thread.join();
-                        algorithm_thread = std::thread(bfs_maze, std::ref(cells), start_cell_ptr, std::ref(is_algorithm_running));
+                        algorithm_thread = std::thread(bfs_maze, std::ref(cells), start_cell_ptr, end_cell_ptr, &is_algorithm_running);
+                    }
+                }
+
+                if(event.key.code == sf::Keyboard::R)
+                {
+                    if (!is_algorithm_running)
+                    {
+                        cells_reset(cells);
+                        start_cell_ptr = nullptr;
+                        end_cell_ptr = nullptr;
+                    }
+                }
+
+                if(event.key.code == sf::Keyboard::K)
+                {
+                    if (!is_algorithm_running)
+                    {
+                        if (!start_cell_ptr) 
+                        {
+                            start_cell_ptr = &cells[0][0];
+                            start_cell_ptr->type = CellType::Start;
+                        }
+                        if (!end_cell_ptr)
+                        {
+                            end_cell_ptr = &cells[GRID_WIDTH-1][GRID_HEIGHT-1];
+                            end_cell_ptr->type = CellType::End;
+                        }
+
+                        is_algorithm_running = true;
+                        if (algorithm_thread.joinable()) algorithm_thread.join();
+
+                        auto solve_task = [&]() {
+                            if (!is_maze_generated(cells)) {
+                                bfs_maze(cells, start_cell_ptr, end_cell_ptr, nullptr);
+                            }
+                            dijkstra_solve(cells, start_cell_ptr, end_cell_ptr, &is_algorithm_running);
+                        };
+                        
+                        algorithm_thread = std::thread(solve_task);
                     }
                 }
 
@@ -189,9 +228,12 @@ int main() {
         if (needs_cleanup && !is_algorithm_running) {
             if (algorithm_thread.joinable()) algorithm_thread.join();
             for(auto& row : cells) for(auto& cell : row) {
-                if (cell.type == CellType::Path || cell.type == CellType::Visited) {
+                if (cell.type == CellType::Path || cell.type == CellType::Frontier) {
                     if (cell.type != CellType::Start && cell.type != CellType::End)
                         cell.type = CellType::Empty;
+                }
+                if (cell.type == CellType::Visited) {
+                     cell.type = CellType::Empty;
                 }
             }
             needs_cleanup = false;
