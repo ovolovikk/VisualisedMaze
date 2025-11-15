@@ -158,7 +158,6 @@ void bfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atom
         Cell* current = frontier[rand_index];
         frontier.erase(frontier.begin() + rand_index);
 
-        current->type = CellType::Path;
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
         std::vector<Cell*> visited_neighbours = get_neighbours(current, cells, true);

@@ -38,7 +38,7 @@ void draw_grid(sf::RenderWindow& window, std::vector<std::vector<Cell>>& cells, 
                     cell_shape.setFillColor(sf::Color::Black);
                     break;
                 case CellType::Path:
-                    cell_shape.setFillColor(sf::Color::Magenta);
+                    cell_shape.setFillColor(sf::Color(128, 0, 0));
                     break;
                 case CellType::Frontier:
                     cell_shape.setFillColor(sf::Color(0, 0, 128));
