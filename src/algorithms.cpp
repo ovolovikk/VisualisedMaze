@@ -9,6 +9,9 @@
 #include <thread>
 #include <chrono>
 
+static std::random_device rd;
+static std::mt19937 g(rd());
+
 void removeWalls(Cell& a, Cell& b)
 {
     int x = a.x - b.x;
@@ -49,8 +52,6 @@ void dfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atom
     cells_reset(cells);
 
     std::stack<Cell*> stack;
-    std::random_device rd;
-    std::mt19937 g(rd());
 
     if(start_cell == nullptr)
     {
@@ -100,8 +101,6 @@ void bfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atom
 {
     cells_reset(cells);
 
-    std::random_device rd;
-    std::mt19937 g(rd());
     std::vector<Cell*> frontier;
 
     if(start_cell == nullptr)
