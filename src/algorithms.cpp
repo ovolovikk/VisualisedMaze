@@ -105,29 +105,21 @@ void bfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atom
 
     if(start_cell == nullptr)
     {
-        start_cell = &cells[g() % GRID_WIDTH][g() % GRID_HEIGHT];
+        start_cell = &cells[0][0];
     }
     
     start_cell->visited = true;
-    start_cell->type = CellType::Path;
+    start_cell->type = CellType::Visited;
     
     int sx = start_cell->x;
     int sy = start_cell->y;
-    if (sy > 0 && !cells[sx][sy-1].visited) {
-        cells[sx][sy-1].visited = true;
-        frontier.push_back(&cells[sx][sy-1]);
-    }
-    if (sx < GRID_WIDTH-1 && !cells[sx+1][sy].visited) {
-        cells[sx+1][sy].visited = true;
-        frontier.push_back(&cells[sx+1][sy]);
-    }
-    if (sy < GRID_HEIGHT-1 && !cells[sx][sy+1].visited) {
-        cells[sx][sy+1].visited = true;
-        frontier.push_back(&cells[sx][sy+1]);
-    }
-    if (sx > 0 && !cells[sx-1][sy].visited) {
-        cells[sx-1][sy].visited = true;
-        frontier.push_back(&cells[sx-1][sy]);
+    if (sy > 0) frontier.push_back(&cells[sx][sy-1]);
+    if (sx < GRID_WIDTH-1) frontier.push_back(&cells[sx+1][sy]);
+    if (sy < GRID_HEIGHT-1) frontier.push_back(&cells[sx][sy+1]);
+    if (sx > 0) frontier.push_back(&cells[sx-1][sy]);
+
+    for(Cell* cell : frontier) {
+        cell->type = CellType::Frontier;
     }
 
     while(!frontier.empty() && is_running)
@@ -137,7 +129,7 @@ void bfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atom
         frontier.erase(frontier.begin() + rand_index);
 
         current->type = CellType::Path;
-        std::this_thread::sleep_for(std::chrono::milliseconds(15));
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
         std::vector<Cell*> visited_neighbours;
         int cx = current->x;
@@ -152,31 +144,29 @@ void bfs_maze(std::vector<std::vector<Cell>>& cells, Cell* start_cell, std::atom
             removeWalls(*current, *chosen_neighbour);
         }
 
-        if (cy > 0 && !cells[cx][cy-1].visited) {
-            cells[cx][cy-1].visited = true;
-            cells[cx][cy-1].type = CellType::Path;
-            frontier.push_back(&cells[cx][cy-1]);
-        }
-        if (cx < GRID_WIDTH-1 && !cells[cx+1][cy].visited) {
-            cells[cx+1][cy].visited = true;
-            cells[cx+1][cy].type = CellType::Path;
-            frontier.push_back(&cells[cx+1][cy]);
-        }
-        if (cy < GRID_HEIGHT-1 && !cells[cx][cy+1].visited) {
-            cells[cx][cy+1].visited = true;
-            cells[cx][cy+1].type = CellType::Path;
-            frontier.push_back(&cells[cx][cy+1]);
-        }
-        if (cx > 0 && !cells[cx-1][cy].visited) {
-            cells[cx-1][cy].visited = true;
-            cells[cx-1][cy].type = CellType::Path;
-            frontier.push_back(&cells[cx-1][cy]);
-        }
+        current->visited = true;
+        current->type = CellType::Visited;
+
+        auto add_to_frontier = [&](int x, int y) {
+            if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT && !cells[x][y].visited) {
+                bool in_frontier = false;
+                for(Cell* f_cell : frontier) if(f_cell == &cells[x][y]) in_frontier = true;
+                if(!in_frontier) {
+                    cells[x][y].type = CellType::Frontier;
+                    frontier.push_back(&cells[x][y]);
+                }
+            }
+        };
+
+        add_to_frontier(cx, cy - 1);
+        add_to_frontier(cx + 1, cy);
+        add_to_frontier(cx, cy + 1);
+        add_to_frontier(cx - 1, cy);
     }
 
     for(auto& row : cells) for(auto& cell : row) {
-        if (cell.type == CellType::Path) {
-            cell.type = CellType::Visited;
+        if (cell.type == CellType::Path || cell.type == CellType::Frontier) {
+            cell.type = CellType::Empty;
         }
     }
 

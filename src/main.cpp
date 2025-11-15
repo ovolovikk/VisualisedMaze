@@ -159,6 +159,9 @@ int main() {
                     case CellType::Path:
                         cell_shape.setFillColor(sf::Color::Magenta);
                         break;
+                    case CellType::Frontier:
+                        cell_shape.setFillColor(sf::Color(0, 0, 128));
+                        break;
                     default:
                         cell_shape.setFillColor(sf::Color::Black);
                 }

@@ -8,7 +8,7 @@
 
 enum class CellType
 {
-    Empty, Start, End, Visited, Path
+    Empty, Start, End, Visited, Path, Frontier
 };
 
 struct Cell
